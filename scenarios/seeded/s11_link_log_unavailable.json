@@ -1,0 +1,27 @@
+{
+  "id": "s11_link_log_unavailable",
+  "title": "Link log outage",
+  "start": "2026-03-10T09:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "intake@riverside-clinic.example"
+      ],
+      "subject": "Discharge summary",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1024"
+      ]
+    }
+  },
+  "faults": {
+    "log_unavailable": [
+      "links"
+    ]
+  },
+  "incident": {
+    "at": "+01:00:00"
+  },
+  "expected": "ESCALATED"
+}

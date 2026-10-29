@@ -1,0 +1,29 @@
+{
+  "id": "s06_internal_mail_unread",
+  "title": "Internal mis-send, purged before read",
+  "start": "2026-03-07T11:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "j.carter@stmarys-health.example"
+      ],
+      "subject": "Psych consult notes",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1020"
+      ]
+    }
+  },
+  "events": [
+    {
+      "at": "+02:00:00",
+      "type": "mail_read",
+      "actor": "j.carter@stmarys-health.example"
+    }
+  ],
+  "incident": {
+    "at": "+00:20:00"
+  },
+  "expected": "REVERSED"
+}

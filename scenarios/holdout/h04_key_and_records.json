@@ -1,0 +1,35 @@
+{
+  "id": "h04_key_and_records",
+  "title": "Records and key to a vendor, nothing used",
+  "start": "2026-04-04T09:00:00Z",
+  "setup": {
+    "keys": [
+      {
+        "id": "key-labs-api",
+        "secret": "rcl_live_Qe5Rt8Yu2Io4Pa7Sd1Fg6Hj9",
+        "service": "svc:lab-sync"
+      }
+    ]
+  },
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "support@labvendor.example"
+      ],
+      "subject": "Sync failing for P-1036",
+      "body": "Token rcl_live_Qe5Rt8Yu2Io4Pa7Sd1Fg6Hj9 fails for patient P-1036."
+    }
+  },
+  "events": [
+    {
+      "at": "+00:05:00",
+      "type": "key_use",
+      "actor": "svc:lab-sync"
+    }
+  ],
+  "incident": {
+    "at": "+00:20:00"
+  },
+  "expected": "CONTAINED"
+}

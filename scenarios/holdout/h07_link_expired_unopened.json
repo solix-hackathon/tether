@@ -1,0 +1,22 @@
+{
+  "id": "h07_link_expired_unopened",
+  "title": "Link expired before incident, never opened",
+  "start": "2026-04-07T09:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "intake@riverside-clinic.example"
+      ],
+      "subject": "Discharge summary",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1001"
+      ]
+    }
+  },
+  "incident": {
+    "at": "+192:00:00"
+  },
+  "expected": "CONTAINED"
+}

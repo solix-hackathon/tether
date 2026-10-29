@@ -1,0 +1,28 @@
+{
+  "id": "h02_partial_revoke_failure",
+  "title": "Two clinics, second revocation fails",
+  "start": "2026-04-02T09:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "front@elmwood-peds.example",
+        "records@harbor-family.example"
+      ],
+      "subject": "Discharge summary",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1035"
+      ]
+    }
+  },
+  "faults": {
+    "fail_ops": [
+      "links.revoke#1"
+    ]
+  },
+  "incident": {
+    "at": "+00:30:00"
+  },
+  "expected": "ESCALATED"
+}

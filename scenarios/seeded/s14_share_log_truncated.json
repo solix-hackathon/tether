@@ -1,0 +1,33 @@
+{
+  "id": "s14_share_log_truncated",
+  "title": "File share log truncated",
+  "start": "2026-03-12T09:00:00Z",
+  "setup": {
+    "files": [
+      {
+        "id": "F-3310",
+        "name": "ward4_census.xlsx",
+        "records": [
+          "P-1002",
+          "P-1003",
+          "P-1005"
+        ]
+      }
+    ]
+  },
+  "action": {
+    "tool": "share_file",
+    "args": {
+      "file_id": "F-3310"
+    }
+  },
+  "faults": {
+    "log_truncated_before": {
+      "files": "+00:30:00"
+    }
+  },
+  "incident": {
+    "at": "+01:00:00"
+  },
+  "expected": "ESCALATED"
+}

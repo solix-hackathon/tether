@@ -1,0 +1,27 @@
+{
+  "id": "s12_revoke_failed",
+  "title": "Link revocation fails",
+  "start": "2026-03-10T12:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "intake@riverside-clinic.example"
+      ],
+      "subject": "Discharge summary",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1025"
+      ]
+    }
+  },
+  "faults": {
+    "fail_ops": [
+      "links.revoke"
+    ]
+  },
+  "incident": {
+    "at": "+01:00:00"
+  },
+  "expected": "ESCALATED"
+}

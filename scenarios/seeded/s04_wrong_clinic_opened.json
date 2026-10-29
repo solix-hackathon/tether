@@ -1,0 +1,30 @@
+{
+  "id": "s04_wrong_clinic_opened",
+  "title": "Wrong clinic, link opened",
+  "start": "2026-03-05T08:30:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "referrals@oakbrook-ortho.example"
+      ],
+      "subject": "Discharge summary",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1012",
+        "P-1013"
+      ]
+    }
+  },
+  "events": [
+    {
+      "at": "+00:25:00",
+      "type": "link_view",
+      "actor": "referrals@oakbrook-ortho.example"
+    }
+  ],
+  "incident": {
+    "at": "+01:30:00"
+  },
+  "expected": "EXPOSED"
+}

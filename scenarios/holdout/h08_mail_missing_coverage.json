@@ -1,0 +1,27 @@
+{
+  "id": "h08_mail_missing_coverage",
+  "title": "Internal mail log without coverage metadata",
+  "start": "2026-04-08T09:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "a.ng@stmarys-health.example"
+      ],
+      "subject": "Discharge summary",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1006"
+      ]
+    }
+  },
+  "faults": {
+    "missing_coverage": [
+      "mail"
+    ]
+  },
+  "incident": {
+    "at": "+00:30:00"
+  },
+  "expected": "ESCALATED"
+}

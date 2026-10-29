@@ -1,0 +1,18 @@
+{
+  "id": "s13_held_fax_cancelled",
+  "title": "Fax held, cancelled before approval",
+  "start": "2026-03-11T09:00:00Z",
+  "action": {
+    "tool": "send_fax",
+    "args": {
+      "destination": "fax:+1-555-0142",
+      "records": [
+        "P-1027"
+      ]
+    }
+  },
+  "incident": {
+    "at": "+00:05:00"
+  },
+  "expected": "REVERSED"
+}

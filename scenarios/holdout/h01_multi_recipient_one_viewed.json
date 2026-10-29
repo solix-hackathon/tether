@@ -1,0 +1,31 @@
+{
+  "id": "h01_multi_recipient_one_viewed",
+  "title": "Two clinics, one opened",
+  "start": "2026-04-01T09:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "front@elmwood-peds.example",
+        "records@harbor-family.example"
+      ],
+      "subject": "Discharge summary",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1033"
+      ]
+    }
+  },
+  "events": [
+    {
+      "at": "+00:50:00",
+      "type": "link_view",
+      "actor": "records@harbor-family.example",
+      "recipient": "records@harbor-family.example"
+    }
+  ],
+  "incident": {
+    "at": "+02:00:00"
+  },
+  "expected": "EXPOSED"
+}

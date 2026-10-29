@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {"name": "recall", "runtimeExecutable": "python3", "runtimeArgs": ["recall/app.py", "--live"], "port": 8000}
+  ]
+}

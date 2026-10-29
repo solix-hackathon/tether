@@ -1,0 +1,52 @@
+{
+  "id": "s03_shared_file_opened",
+  "title": "Shared file opened externally (demo 3)",
+  "demo": 3,
+  "start": "2026-03-04T10:00:00Z",
+  "setup": {
+    "files": [
+      {
+        "id": "F-2041",
+        "name": "lab_results_march.csv",
+        "records": [
+          "P-1007",
+          "P-1008",
+          "P-1011",
+          "P-1015",
+          "P-1019",
+          "P-1022",
+          "P-1023",
+          "P-1026",
+          "P-1030",
+          "P-1031",
+          "P-1034",
+          "P-1038"
+        ]
+      }
+    ]
+  },
+  "action": {
+    "tool": "share_file",
+    "args": {
+      "file_id": "F-2041",
+      "scope": "public"
+    }
+  },
+  "events": [
+    {
+      "at": "+00:40:00",
+      "type": "file_access",
+      "actor": "m.osei@freemail.example"
+    },
+    {
+      "at": "+03:00:00",
+      "type": "file_access",
+      "actor": "m.osei@freemail.example"
+    }
+  ],
+  "incident": {
+    "at": "+02:00:00",
+    "source": "human_report"
+  },
+  "expected": "EXPOSED"
+}

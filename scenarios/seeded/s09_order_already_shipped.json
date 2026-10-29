@@ -1,0 +1,23 @@
+{
+  "id": "s09_order_already_shipped",
+  "title": "Supply order already shipped",
+  "start": "2026-03-08T10:00:00Z",
+  "action": {
+    "tool": "create_order",
+    "agent": "agent:supply",
+    "args": {
+      "amount": 12500.0,
+      "counterparty": "medsupply-co"
+    }
+  },
+  "events": [
+    {
+      "at": "+00:30:00",
+      "type": "order_fulfill"
+    }
+  ],
+  "incident": {
+    "at": "+01:00:00"
+  },
+  "expected": "ESCALATED"
+}

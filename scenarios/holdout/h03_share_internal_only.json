@@ -1,0 +1,40 @@
+{
+  "id": "h03_share_internal_only",
+  "title": "Public share, only staff opened it",
+  "start": "2026-04-03T09:00:00Z",
+  "setup": {
+    "files": [
+      {
+        "id": "F-3310",
+        "name": "ward4_census.xlsx",
+        "records": [
+          "P-1002",
+          "P-1003",
+          "P-1005"
+        ]
+      }
+    ]
+  },
+  "action": {
+    "tool": "share_file",
+    "args": {
+      "file_id": "F-3310"
+    }
+  },
+  "events": [
+    {
+      "at": "+00:10:00",
+      "type": "file_access",
+      "actor": "ward4.lead@stmarys-health.example"
+    },
+    {
+      "at": "+05:00:00",
+      "type": "file_access",
+      "actor": "crawler@indexbot.example"
+    }
+  ],
+  "incident": {
+    "at": "+01:00:00"
+  },
+  "expected": "CONTAINED"
+}

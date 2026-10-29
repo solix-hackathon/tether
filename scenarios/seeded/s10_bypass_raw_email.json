@@ -1,0 +1,26 @@
+{
+  "id": "s10_bypass_raw_email",
+  "title": "Raw records emailed around the gateway",
+  "start": "2026-03-09T15:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "billing@lakeside-imaging.example"
+      ],
+      "subject": "Imaging orders",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1016",
+        "P-1017",
+        "P-1018"
+      ]
+    },
+    "via_gateway": false
+  },
+  "incident": {
+    "at": "+00:45:00",
+    "source": "detector"
+  },
+  "expected": "ESCALATED"
+}

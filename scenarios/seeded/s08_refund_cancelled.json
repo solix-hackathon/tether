@@ -1,0 +1,17 @@
+{
+  "id": "s08_refund_cancelled",
+  "title": "Duplicate refund cancelled",
+  "start": "2026-03-08T09:00:00Z",
+  "action": {
+    "tool": "issue_refund",
+    "agent": "agent:billing",
+    "args": {
+      "amount": 1840.0,
+      "counterparty": "acct-77120"
+    }
+  },
+  "incident": {
+    "at": "+00:15:00"
+  },
+  "expected": "REVERSED"
+}

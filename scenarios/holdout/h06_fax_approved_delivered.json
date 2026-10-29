@@ -1,0 +1,26 @@
+{
+  "id": "h06_fax_approved_delivered",
+  "title": "Fax approved and delivered",
+  "start": "2026-04-06T09:00:00Z",
+  "action": {
+    "tool": "send_fax",
+    "args": {
+      "destination": "fax:+1-555-0199",
+      "records": [
+        "P-1039",
+        "P-1040"
+      ]
+    }
+  },
+  "events": [
+    {
+      "at": "+00:05:00",
+      "type": "approve_hold",
+      "actor": "charge.nurse@stmarys-health.example"
+    }
+  ],
+  "incident": {
+    "at": "+01:00:00"
+  },
+  "expected": "ESCALATED"
+}

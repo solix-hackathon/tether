@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall Dashboard</title>
+<style>
+:root {
+  --bg: #f5f4f1; --panel: #ffffff; --ink: #1c1d1f; --muted: #6b6e75; --line: #e4e2dd; --hover: #efede8;
+  --accent: #2f4fd8; --accent-ink: #ffffff;
+  --reversed: #1f7a4d; --contained: #1b6f86; --exposed: #b3261e; --escalated: #8f6200;
+  --reversed-bg: #e3f3ea; --contained-bg: #e0f1f5; --exposed-bg: #fbe6e4; --escalated-bg: #fbf1d9;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131416; --panel: #1b1c1f; --ink: #ececee; --muted: #9a9ca3; --line: #2c2e33; --hover: #24262a;
+    --accent: #8ea2ff; --accent-ink: #10131f;
+    --reversed: #6fd4a0; --contained: #6cc9df; --exposed: #ff8f86; --escalated: #f1c25b;
+    --reversed-bg: #183026; --contained-bg: #162c33; --exposed-bg: #3a1c1a; --escalated-bg: #352b14;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, system-ui, "Segoe UI", sans-serif; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+
+/* Shell */
+.top { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.top .brand { font-weight: 700; font-size: 16px; }
+.top .tag { color: var(--muted); font-size: 12px; flex: 1; }
+.shell { display: grid; grid-template-columns: 280px 1fr; height: calc(100% - 57px); }
+.side { border-right: 1px solid var(--line); overflow-y: auto; background: var(--panel); }
+.side h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 16px 16px 6px; }
+.item { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 10px 16px; border-left: 3px solid transparent; }
+.item:hover { background: var(--hover); }
+.item.active { background: var(--hover); border-left-color: var(--accent); }
+.item .t { display: block; font-weight: 550; margin: 3px 0 1px; }
+.item .m { display: block; font-size: 12px; color: var(--muted); }
+.main { overflow-y: auto; }
+.page { max-width: 920px; margin: 0 auto; padding: 24px 24px 60px; }
+@media (max-width: 760px) {
+  .top .tag { display: none; }
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+  .side { border-right: 0; border-bottom: 1px solid var(--line); max-height: 200px; }
+  .page { padding: 16px 16px 48px; }
+}
+
+/* Verdict badges */
+.badge { display: inline-block; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 999px; letter-spacing: .04em; }
+.REVERSED { color: var(--reversed); background: var(--reversed-bg); }
+.CONTAINED { color: var(--contained); background: var(--contained-bg); }
+.EXPOSED { color: var(--exposed); background: var(--exposed-bg); }
+.ESCALATED { color: var(--escalated); background: var(--escalated-bg); }
+
+/* Incident header and tabs */
+.head h1 { font-size: 22px; margin: 8px 0 4px; letter-spacing: -.01em; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 18px 0 20px; overflow-x: auto; }
+.tab { border: 0; background: none; padding: 8px 12px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 700; text-align: center; }
+
+/* Overview */
+.verdict { border-radius: 12px; padding: 18px 20px; }
+.verdict .v { font-size: 20px; font-weight: 800; letter-spacing: .03em; }
+.verdict p { margin: 4px 0 0; color: var(--ink); }
+.story { font-size: 15px; margin: 18px 0; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.stat .n { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat .l { font-size: 12px; color: var(--muted); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
+.card h3 { font-size: 13px; margin: 0 0 8px; }
+.card ul { margin: 0; padding-left: 18px; }
+.next { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* Timeline */
+.tl { list-style: none; margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--line); }
+.tl li { position: relative; padding: 0 0 18px 14px; }
+.tl li::before { content: ""; position: absolute; left: -25px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--panel); border: 2px solid var(--muted); }
+.tl li.bad::before { border-color: var(--exposed); background: var(--exposed); }
+.tl li.good::before { border-color: var(--reversed); background: var(--reversed); }
+.tl li.act::before { border-color: var(--accent); background: var(--accent); }
+.tl .when { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* Evidence rows */
+.row { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+.row:first-of-type { border-top: 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; }
+.dot.ok { background: var(--reversed); } .dot.bad { background: var(--exposed); } .dot.warn { background: var(--escalated); }
+
+/* Drafts */
+.drafts { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+@media (max-width: 760px) { .drafts { grid-template-columns: 1fr; } }
+.dlist { display: flex; flex-direction: column; gap: 6px; }
+.ditem { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 12px; }
+.ditem.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ditem .t { display: block; font-weight: 600; }
+.ditem .m { display: block; font-size: 12px; color: var(--muted); }
+.status-ok { color: var(--reversed); } .status-bad { color: var(--exposed); }
+textarea { width: 100%; min-height: 340px; font: 12.5px/1.5 var(--mono); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px; resize: vertical; }
+.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+input { font: inherit; padding: 6px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.err { color: var(--exposed); font-size: 12.5px; }
+.note { font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--escalated-bg); color: var(--ink); margin-bottom: 10px; }
+
+/* Ledger */
+.ledger { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ledger td, .ledger th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ledger th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+
+/* Picker */
+dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 64px); background: var(--panel); color: var(--ink); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.dhead { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.dhead h2 { margin: 0; font-size: 16px; }
+.dbody { padding: 8px 20px 20px; overflow-y: auto; max-height: calc(100vh - 140px); }
+.dbody h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 16px 0 8px; }
+.demos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 560px) { .demos { grid-template-columns: 1fr; } }
+.pick { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 12px; }
+.pick:hover { border-color: var(--accent); }
+.pick .t { display: block; font-weight: 600; margin-top: 6px; }
+.prow { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: none; padding: 9px 4px; }
+.prow:hover { background: var(--hover); }
+
+/* Replay */
+.page.wide { max-width: 1180px; }
+.rp-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.rp-bar .btn { min-width: 84px; }
+.rp-clock { display: flex; flex-direction: column; line-height: 1.25; margin: 0 6px; min-width: 128px; }
+.rp-clock span { font-size: 11px; color: var(--muted); }
+.rp-clock b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.rp-track { flex: 1; min-width: 140px; height: 8px; background: var(--line); border-radius: 4px; cursor: pointer; }
+.rp-fill { height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .35s ease; }
+.rp-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 960px) { .rp-panels { grid-template-columns: 1fr; } }
+.rp-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+.rp-panel > header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); font-weight: 700; min-height: 44px; }
+.rp-panel[data-panel="without"] > header { color: var(--muted); }
+.rp-panel.alarm { animation: alarm 1.2s ease; }
+@keyframes alarm { 0%, 60% { box-shadow: 0 0 0 3px var(--escalated); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.rp-stage { position: relative; display: flex; justify-content: space-between; padding: 20px 10px 12px; }
+.rp-line { position: absolute; left: 52px; right: 52px; top: 44px; border-top: 2px dashed var(--line); }
+.node { position: relative; z-index: 1; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.node .ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--bg); border: 2px solid var(--line); color: var(--muted); transition: background .3s, border-color .3s, color .3s, opacity .3s; }
+.node svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.node b { font-size: 12px; line-height: 1.25; }
+.node .st { font-size: 11px; color: var(--muted); line-height: 1.3; min-height: 2.6em; }
+.node.live .ic { border-color: var(--accent); color: var(--accent); }
+.node.hit .ic { border-color: var(--exposed); color: var(--exposed); background: var(--exposed-bg); }
+.node.dead .ic { border-color: var(--reversed); color: var(--reversed); background: var(--reversed-bg); }
+.node.held .ic { border-color: var(--escalated); color: var(--escalated); background: var(--escalated-bg); }
+.node.guard .ic { border-color: var(--accent); color: var(--accent); }
+.node.off .ic { border-style: dashed; opacity: .45; }
+.node.off b { text-decoration: line-through; color: var(--muted); }
+.node.hit .st, .node.off .st { color: var(--exposed); }
+.node.dead .st { color: var(--reversed); }
+.node.pulse .ic { animation: pulse .5s ease; }
+@keyframes pulse { 50% { transform: scale(1.15); } }
+.chip { position: absolute; z-index: 3; top: 34px; left: 0; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; pointer-events: none; background: var(--ink); color: var(--panel); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.chip.raw, .chip.bad { background: var(--exposed); color: var(--panel); }
+.chip.safe, .chip.ok { background: var(--reversed); color: var(--panel); }
+.chip.denied { background: var(--panel); color: var(--exposed); border: 1.5px solid var(--exposed); }
+.chip.unk { background: var(--escalated); color: var(--panel); }
+.chip.quiet { background: var(--line); color: var(--ink); }
+.rp-feed { list-style: none; margin: 0; padding: 8px 14px 10px; height: 168px; overflow-y: auto; border-top: 1px solid var(--line); font-size: 12.5px; }
+.rp-feed li { display: grid; grid-template-columns: 42px 1fr; gap: 6px; padding: 3px 0; animation: fadein .35s ease; }
+.rp-feed time { font: 11.5px var(--mono); color: var(--muted); padding-top: 1px; }
+.rp-feed li.t-bad span { color: var(--exposed); }
+.rp-feed li.t-good span { color: var(--reversed); }
+.rp-feed li.t-warn span { color: var(--escalated); }
+.rp-feed .ph { display: block; color: var(--muted); font-style: italic; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } }
+.rp-stamp { display: none; padding: 14px; border-top: 1px solid var(--line); text-align: center; }
+.rp-stamp.show { display: block; animation: stamp .5s cubic-bezier(.2, 1.5, .4, 1); }
+.rp-stamp .h { display: inline-block; font-size: 22px; font-weight: 800; letter-spacing: .04em; padding: 3px 14px; border-radius: 8px; }
+.rp-stamp .h.WITHOUT { color: var(--exposed); background: var(--exposed-bg); }
+.rp-stamp p { margin: 6px 0 0; font-size: 13px; }
+@keyframes stamp { from { transform: scale(1.35); opacity: 0; } }
+.rp-compare { margin-top: 16px; opacity: .35; transition: opacity .5s; }
+.rp-compare.show { opacity: 1; }
+.rp-compare table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rp-compare th, .rp-compare td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.rp-compare th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.rp-compare td.w { color: var(--reversed); font-weight: 600; }
+.rp-compare td.wo { color: var(--exposed); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .rp-panel.alarm, .node.pulse .ic, .rp-stamp.show, .rp-feed li { animation: none; } }
+
+/* Live demo */
+.live-item { border-bottom: 1px solid var(--line); }
+.live-item .t { display: inline; margin-left: 6px; }
+.live-item .m { margin-top: 2px; }
+.live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--exposed); box-shadow: 0 0 0 0 var(--exposed); animation: ping 1.8s infinite; }
+@keyframes ping { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.btn.danger { background: var(--exposed); border-color: var(--exposed); color: var(--panel); font-weight: 700; font-size: 16px; padding: 10px 22px; }
+.lv-steps { display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 14px; margin-top: 18px; }
+@media (max-width: 960px) { .lv-steps { grid-template-columns: 1fr; } }
+.lv-step { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; opacity: .6; transition: opacity .3s, box-shadow .3s; }
+.lv-step.on { opacity: 1; box-shadow: 0 0 0 2px var(--accent); }
+.lv-step h3 { margin: 6px 0 10px; font-size: 15px; }
+.lv-num { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--accent); color: var(--accent-ink); }
+.lv-mail { font-size: 12.5px; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
+.lv-mail.bad { background: var(--exposed-bg); }
+.lv-mail.bad s { color: var(--exposed); }
+.lv-mail.good { background: var(--reversed-bg); }
+.lv-tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 3px; }
+.lv-qr { display: block; width: 100%; max-width: 260px; margin: 0 auto; border-radius: 10px; background: #fff; transition: opacity .4s, filter .4s; }
+.lv-qr.dead { opacity: .25; filter: grayscale(1); }
+.lv-url { display: block; text-align: center; margin: 8px 0 12px; word-break: break-all; color: var(--accent); }
+.lv-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.lv-counts b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+.lv-counts span { font-size: 12px; color: var(--muted); }
+.lv-log { list-style: none; margin: 10px 0 0; padding: 0; max-height: 260px; overflow-y: auto; font-size: 13.5px; }
+.lv-log li { display: grid; grid-template-columns: 72px 1fr; gap: 8px; padding: 6px 4px; border-top: 1px solid var(--line); }
+.lv-log time { font: 12px var(--mono); color: var(--muted); padding-top: 2px; }
+.lv-log .lv-open span { color: var(--exposed); font-weight: 600; }
+.lv-log .lv-blocked span { color: var(--reversed); }
+.lv-log .lv-recall span { color: var(--accent); font-weight: 700; }
+.lv-log .lv-saw span { color: var(--muted); }
+.lv-pick { display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+.lv-pick:hover { border-color: var(--accent); }
+.lv-pick.outage { border-style: dashed; }
+.lv-steps.idle { grid-template-columns: 1.8fr 1fr 1fr; }
+@media (max-width: 960px) { .lv-steps.idle { grid-template-columns: 1fr; } }
+.side-h { display: flex; align-items: center; justify-content: space-between; padding-right: 12px; }
+.link-btn { border: 0; background: none; color: var(--muted); font-size: 12px; text-decoration: underline; padding: 4px; }
+.link-btn:hover { color: var(--exposed); }
+.present { position: fixed; inset: 0; z-index: 50; background: var(--bg); overflow: auto; padding: 32px; }
+.present[hidden] { display: none; }
+.pr-exit { position: absolute; top: 16px; right: 16px; }
+.pr-idle { text-align: center; margin-top: 20vh; }
+.pr-wrap { display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: center; min-height: calc(100vh - 64px); max-width: 1500px; margin: 0 auto; }
+@media (max-width: 900px) { .pr-wrap { grid-template-columns: 1fr; gap: 24px; } }
+.pr-qr { display: block; width: min(72vh, 46vw); min-width: 240px; aspect-ratio: 1; border-radius: 16px; background: #fff; transition: opacity .5s, filter .5s; }
+@media (max-width: 900px) { .pr-qr { width: 100%; } }
+.pr-qr.dead { opacity: .2; filter: grayscale(1); }
+.pr-url { text-align: center; margin-top: 12px; font-size: 16px; color: var(--muted); word-break: break-all; }
+.pr-right h1 { font-size: clamp(28px, 4vw, 56px); line-height: 1.1; margin: 10px 0 24px; letter-spacing: -.02em; }
+.pr-right .lv-round { font-size: 16px; }
+.pr-counts { display: flex; gap: 40px; flex-wrap: wrap; margin: 8px 0 32px; }
+.pr-counts b { display: block; font-size: clamp(48px, 7vw, 96px); line-height: 1; font-variant-numeric: tabular-nums; }
+.pr-counts span { font-size: 18px; color: var(--muted); }
+.pr-recall { font-size: 26px; padding: 16px 40px; border-radius: 12px; }
+.pr-verdict { display: inline-block; font-size: clamp(48px, 8vw, 110px); font-weight: 800; letter-spacing: .03em; padding: 4px 28px; border-radius: 16px; animation: stamp .5s cubic-bezier(.2, 1.5, .4, 1); }
+.pr-meaning { font-size: 22px; margin: 12px 0 24px; }
+.lv-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+.lv-round { display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--hover); border-radius: 6px; padding: 3px 8px; margin-bottom: 8px; }
+.lv-round.outage { color: var(--escalated); background: var(--escalated-bg); }
+.lv-outage { font-size: 12.5px; font-weight: 700; color: var(--escalated); background: var(--escalated-bg); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; }
+.lv-pick b { display: block; }
+.lv-pick > span:not(.lv-badges) { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.lv-switch { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; cursor: pointer; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+.lv-switch input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--escalated); }
+.lv-log li.new { animation: fadein .4s ease; background: var(--hover); }
+
+.empty { text-align: center; padding: 64px 16px; }
+.empty h1 { font-size: 22px; margin: 0 0 6px; }
+.empty .demos { max-width: 720px; margin: 24px auto 0; }
+.side .none { padding: 8px 16px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Recall</span>
+  <span class="tag">Damage control for AI agents · synthetic data, mock systems, not legal advice</span>
+  <button class="btn primary" id="new">New incident</button>
+</header>
+<div class="shell">
+  <nav class="side">
+    <button class="item live-item" id="live-item" data-live="1"><span class="live-dot"></span><span class="t">Live demo</span><span class="m">The audience opens a real link</span></button>
+    <div class="side-h"><h2>Incidents</h2><button class="link-btn" id="clear-inc" hidden>Clear all</button></div><div id="list"></div>
+  </nav>
+  <main class="main"><div class="page" id="view"></div></main>
+</div>
+
+<dialog id="picker">
+  <div class="dhead"><h2>Simulate an incident</h2><button class="btn" id="close">Close</button></div>
+  <div class="dbody" id="pickbody"></div>
+</dialog>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pretty = s => String(s).replace(/_/g, " ");
+const shortTime = iso => iso ? iso.replace("T", " ").replace(/:\d\dZ$/, "") : "";
+
+const MEANING = {
+  REVERSED: "The action was fully undone, and the target system confirmed it.",
+  CONTAINED: "Access was revoked before anyone outside viewed the data.",
+  EXPOSED: "Someone outside the organization accessed the data.",
+  ESCALATED: "Recall can't prove what happened. A person needs to investigate.",
+};
+const TOOL = {
+  send_email: "sent an email", share_file: "shared a file publicly", create_order: "placed an order",
+  issue_refund: "issued a refund", send_fax: "sent a fax", post_external: "posted to a partner system",
+};
+
+let scenarios = [], incidents = [], route = {id: null, tab: "overview", draft: null};
+let approver = "";
+try { approver = localStorage.getItem("recall-approver") || ""; } catch (e) {}
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {});
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+function go(id, tab = "replay", draft = null) {
+  location.hash = id ? `#/${id}/${tab}${draft ? "/" + draft : ""}` : "#/";
+}
+function parseHash() {
+  const [, id, tab, draft] = location.hash.split("/");
+  route = {id: id || null, tab: tab || "replay", draft: draft || null};
+}
+
+const pending = inc => inc.drafts.filter(d => d.status === "pending_approval" || d.status === "blocked").length;
+
+/* ---------- sidebar ---------- */
+function renderList() {
+  if (!incidents.length) { $("#list").innerHTML = `<div class="none">None yet.</div>`; return; }
+  $("#list").innerHTML = incidents.map(i => {
+    const p = pending(i);
+    return `<button class="item ${i.incident_id === route.id ? "active" : ""}" data-go="${i.incident_id}">
+      <span class="badge ${i.verdict}">${i.verdict}</span>
+      <span class="t">${esc(i.title.replace(/ \(demo \d\)/, ""))}</span>
+      <span class="m">${i.incident_id}${i.drafts_pending ? " · drafting reports…" : p ? ` · ${p} to review` : " · all reviewed"}</span></button>`;
+  }).join("");
+}
+
+/* ---------- picker ---------- */
+function renderPicker() {
+  const demos = scenarios.filter(s => s.demo).sort((a, b) => a.demo - b.demo);
+  const rows = set => scenarios.filter(s => !s.demo && s.set === set).map(s =>
+    `<button class="prow" data-run="${s.id}"><span>${esc(s.title)}</span><span class="badge ${s.expected}">${s.expected}</span></button>`).join("");
+  const demoCards = demos.map(s => `<button class="pick" data-run="${s.id}"><span class="badge ${s.expected}">${s.expected}</span>
+      <span class="t">${esc(s.title.replace(/ \(demo \d\)/, ""))}</span></button>`).join("");
+  $("#pickbody").innerHTML = `<h3>Demo scenarios</h3><div class="demos">${demoCards}</div>
+    <h3>Seeded scenarios</h3>${rows("seeded")}<h3>Held-out scenarios</h3>${rows("holdout")}`;
+  return demoCards;
+}
+
+async function run(id, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const inc = await api("/api/run", {scenario: id});
+    $("#picker").close();
+    await refresh();
+    go(inc.incident_id);
+  } finally { if (btn) btn.disabled = false; }
+}
+
+/* ---------- incident views ---------- */
+function story(inc) {
+  const f = inc.facts;
+  if (!f.tool) return "Recall could not match this incident to any action in the ledger.";
+  const who = f.tool === "share_file" ? `file ${f.recipients.join(", ")}` : f.recipients.join(", ");
+  const data = f.record_count ? `${f.record_count} patient record${f.record_count === 1 ? "" : "s"}`
+    : (f.data_classification === "SECRET" ? "a production API key" : "no sensitive data");
+  const bypass = f.via_gateway === false ? " It went around the Recall gateway." : "";
+  return `At ${shortTime(f.action_at)}, <b>${esc(f.agent)}</b> ${TOOL[f.tool] || f.tool} (<b>${esc(who)}</b>) containing ${data}.${bypass} The incident was reported at ${shortTime(f.reported_at)}.`;
+}
+
+function overview(inc) {
+  const f = inc.facts, p = pending(inc);
+  const ok = inc.reversals.filter(r => r.confirmed).length;
+  return `
+    <div class="verdict ${inc.verdict}"><div class="v">${inc.verdict}</div><p>${MEANING[inc.verdict]}</p></div>
+    <p class="story">${story(inc)}</p>
+    <div class="stats">
+      <div class="stat"><div class="n">${f.record_count}</div><div class="l">patient records</div></div>
+      <div class="stat"><div class="n">${f.view_count}</div><div class="l">unauthorized accesses</div></div>
+      <div class="stat"><div class="n">${inc.reversals.length ? `${ok}/${inc.reversals.length}` : "–"}</div><div class="l">reversals confirmed</div></div>
+      <div class="stat"><div class="n">${p}</div><div class="l">drafts to review</div></div>
+    </div>
+    <div class="card"><h3>Why this verdict</h3><ul>${inc.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>
+    ${p ? `<div class="card next"><span>${p} draft${p === 1 ? "" : "s"} waiting for human approval. Nothing is sent until someone approves it.</span>
+      <button class="btn primary" data-tab="drafts">Review drafts</button></div>` : ""}`;
+}
+
+function timelineView(inc) {
+  const cls = t => /download|view|use|read/.test(t.event) && /\(allowed\)/.test(t.detail) && !/svc:|@stmarys/.test(t.detail) ? "bad"
+    : /revoke|rotate|purge|cancel/.test(t.event) ? "good" : t.event === "action_executed" || t.event === "action_held" ? "act" : "";
+  return `<ul class="tl">${inc.facts.timeline.map(t => `<li class="${cls(t)}">
+    <div class="when">${esc(t.at)}</div><div>${esc(t.detail)}</div></li>`).join("")}</ul>`;
+}
+
+function evidenceView(inc) {
+  const rev = inc.reversals.length ? inc.reversals.map(r => `<div class="row"><span class="dot ${r.confirmed ? "ok" : "bad"}"></span><div>
+      <b>${pretty(r.playbook)}</b> <code>${esc(r.resource)}</code>${r.recipient ? ` <span class="muted">for ${esc(r.recipient)}</span>` : ""}<br>
+      <span class="muted">${r.confirmed ? "Confirmed by the target system at " + esc(r.at) : "Not confirmed" + (r.error ? ": " + esc(r.error) : "")}</span></div></div>`).join("")
+    : `<p class="muted">No reversal applies to this action.</p>`;
+  const label = {ok: "Log is complete and trustworthy", incomplete: "Log is incomplete", unavailable: "Log is unavailable",
+                 inconsistent: "Log contradicts itself or the clock", no_visibility: "No access log exists"};
+  const ev = inc.evidence.length ? inc.evidence.map(e => `<div class="row"><span class="dot ${e.status === "ok" ? "ok" : e.status === "inconsistent" || e.status === "unavailable" ? "bad" : "warn"}"></span><div>
+      <b>${label[e.status]}</b> <span class="muted">· ${pretty(e.kind)}</span> <code>${esc(e.resource)}</code>
+      ${e.notes.length ? `<br><span class="muted">${esc(e.notes.join("; "))}</span>` : ""}</div></div>`).join("")
+    : `<p class="muted">No access logs apply to this action.</p>`;
+  const views = inc.facts.views.length ? `<div class="card"><h3>Unauthorized accesses</h3>${inc.facts.views.map(v =>
+      `<div class="row"><span class="dot bad"></span><div><b>${esc(v.actor)}</b> · ${esc(v.event)} at <code>${esc(v.at)}</code></div></div>`).join("")}</div>` : "";
+  return `<div class="card" style="margin-top:0"><h3>What Recall did</h3>${rev}</div>
+    <div class="card"><h3>Access logs checked</h3>${ev}</div>${views}`;
+}
+
+function draftsView(inc) {
+  if (inc.drafts_pending) return `<div class="card" style="margin-top:0"><b>Claude is writing the drafts…</b>
+    <p class="muted" style="margin:4px 0 0">The verdict and the reversal are already done. The drafts appear here in a few seconds, each checked by the fact guardrail.</p></div>`;
+  if (!inc.drafts.length) return `<p class="muted">No drafts for this incident.</p>`;
+  const sel = inc.drafts.find(d => d.kind === route.draft) || inc.drafts.find(d => d.status === "pending_approval") || inc.drafts[0];
+  const statusText = d => d.status === "sent" ? "Approved and sent" : d.status === "approved" ? "Approved"
+    : d.status === "rejected" ? "Rejected" : d.status === "blocked" ? "Blocked by guardrail" : "Needs review";
+  const list = inc.drafts.map(d => `<button class="ditem ${d === sel ? "active" : ""}" data-draft="${d.kind}">
+      <span class="t">${pretty(d.kind).replace(/^\w/, c => c.toUpperCase())}</span>
+      <span class="m">${statusText(d)} · ${d.source}</span></button>`).join("");
+  const editable = sel.status === "pending_approval" || sel.status === "blocked";
+  const guard = sel.guardrail.ok ? `<span class="status-ok">✓ Every fact matches the engine</span>`
+    : `<span class="status-bad">✕ ${esc(sel.guardrail.violations.join("; "))}</span>`;
+  const done = sel.approved_by ? `Approved by ${esc(sel.approved_by)} at ${esc(sel.approved_at)}${sel.message_id ? ` · sent as <code>${esc(sel.message_id)}</code>` : ""}`
+    : sel.rejected_by ? `Rejected by ${esc(sel.rejected_by)}` : "";
+  return `<div class="drafts"><div class="dlist">${list}</div><div data-kind="${sel.kind}">
+    ${sel.llm_rejected ? `<div class="note">Claude's draft stated facts the engine didn't produce, so the template is shown instead: ${esc(sel.llm_rejected.join("; "))}</div>` : ""}
+    <div style="margin-bottom:8px;font-size:12.5px">${guard}</div>
+    <textarea ${editable ? "" : "readonly"}>${esc(sel.text)}</textarea>
+    ${editable ? `<div class="actions"><input class="who" placeholder="Your name" value="${esc(approver)}">
+      <button class="btn primary" data-act="approve">${sel.kind === "deletion_request" ? "Approve and send" : "Approve"}</button>
+      <button class="btn" data-act="reject">Reject</button><span class="err msg"></span></div>
+      <p class="muted" style="font-size:12px">Edits are re-checked against the engine's facts before approval.</p>`
+      : `<p class="muted">${done}</p>`}
+  </div></div>`;
+}
+
+async function ledgerView(inc) {
+  const data = await api("/api/ledger/" + inc.incident_id);
+  const what = e => e.verdict || (e.kind ? pretty(e.kind) : "") || (e.playbook ? pretty(e.playbook) : "") || e.status || "";
+  return `<p class="${data.verified ? "status-ok" : "status-bad"}">${data.verified ? "✓ Hash chain verified: no entry has been altered." : "✕ Hash chain broken"}</p>
+    <div class="card" style="padding:4px 8px;overflow-x:auto"><table class="ledger"><tr><th>#</th><th>Time</th><th>Entry</th><th>Detail</th><th>Hash</th></tr>
+    ${data.entries.map(e => `<tr><td>${e.seq}</td><td class="mono">${shortTime(e.at)}</td><td>${pretty(e.type)}</td><td>${esc(what(e))}</td><td class="mono muted">${e.hash.slice(0, 10)}</td></tr>`).join("")}
+    </table></div>`;
+}
+
+async function renderView() {
+  stopReplay();
+  stopLive();
+  $("#view").classList.remove("wide");
+  renderList();
+  $("#live-item").classList.toggle("active", route.id === "live");
+  if (route.id === "live") { $("#view").classList.add("wide"); return startLive(); }
+  const inc = incidents.find(i => i.incident_id === route.id);
+  if (!inc) {
+    $("#view").innerHTML = `<div class="empty"><h1>${incidents.length ? "Pick an incident" : "No incidents yet"}</h1>
+      <p class="muted">Simulate one of the demo incidents to see how Recall reverses, contains, or proves exposure.</p>
+      <div class="demos">${scenarios.filter(s => s.demo).sort((a, b) => a.demo - b.demo).map(s => `<button class="pick" data-run="${s.id}">
+        <span class="badge ${s.expected}">${s.expected}</span><span class="t">${esc(s.title.replace(/ \(demo \d\)/, ""))}</span></button>`).join("")}</div></div>`;
+    return;
+  }
+  const p = pending(inc);
+  const tabs = [["replay", "Replay"], ["overview", "Overview"],["timeline", "Timeline"], ["evidence", "Evidence"], ["drafts", "Drafts" + (p ? `<span class="count">${p}</span>` : "")], ["ledger", "Ledger"]];
+  let body;
+  if (route.tab === "timeline") body = timelineView(inc);
+  else if (route.tab === "evidence") body = evidenceView(inc);
+  else if (route.tab === "drafts") body = draftsView(inc);
+  else if (route.tab === "ledger") body = `<p class="muted">Loading…</p>`;
+  else if (route.tab === "overview") body = overview(inc);
+  else body = `<p class="muted">Loading replay…</p>`;
+  $("#view").classList.toggle("wide", route.tab === "replay");
+  $("#view").innerHTML = `<div class="head"><span class="muted">${inc.incident_id} · action ${inc.action_id}</span>
+      <h1>${esc(inc.title.replace(/ \(demo \d\)/, ""))}</h1>
+      <span class="muted">${inc.scenario.startsWith("live-") ? "Live audience session · real opens from real devices"
+        : `Expected verdict ${inc.expected} · ${inc.verdict === inc.expected ? "matched" : "<span class='status-bad'>did not match</span>"}`}</span></div>
+    <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${route.tab === k ? "active" : ""}" data-tab="${k}">${l}</button>`).join("")}</div>
+    <div id="tabbody">${body}</div>`;
+  if (route.tab === "ledger") $("#tabbody").innerHTML = await ledgerView(inc);
+  if (route.tab === "replay") startReplay(inc);
+}
+
+/* ---------- live audience demo ---------- */
+let live = null;
+const MODE = {
+  link: {pick: "Patient record sent as a link", ends: "Ends CONTAINED if you recall before anyone opens it, EXPOSED if someone does.",
+         who: "The care-coordinator agent emails patient P-1004's discharge summary to <b>intake@riverside-clinic.example</b>, the wrong clinic.",
+         wrote: "What the agent wrote", left: "What actually left, after the gateway", scan: "The room opens it",
+         recall: "Recall it", hint: "Wait for a few opens, then pull the link back. Every open screen flips to \"revoked\" within two seconds."},
+  key: {pick: "API key pasted into a support reply", ends: "Ends REVERSED if you rotate before anyone uses the key, EXPOSED if someone does.",
+        who: "The support agent replies to a customer and pastes the <b>production billing API key</b> into the email.",
+        wrote: "What the agent wrote", left: "What left (an email can't be unsent; the gateway logged the key for rotation)", scan: "The room reads the leaked email",
+        recall: "Rotate the key", hint: "Let the room read the email. Rotate the key, then ask them to press \"Try this key\": it fails. Anyone who tries before you rotate makes it EXPOSED."},
+};
+
+function stopLive() { if (live && live.timer) clearTimeout(live.timer); live = null; }
+
+async function startLive() {
+  live = {timer: null, seen: 0, path: null, key: null, last: null};
+  $("#view").innerHTML = `<div class="head"><div class="next"><span class="muted">Live demo</span>
+      <button class="btn" id="lv-present">Projector view</button></div>
+      <h1>The audience is the outside world</h1>
+      <span class="muted">An AI agent makes a mistake that leaves the building. The room gets the result on their phones. Then you recall it.</span></div>
+    <div id="live-warn"></div>
+    <div class="lv-steps">
+      <section class="lv-step" id="lv-1"><div class="lv-num">1</div><h3>The agent sends it</h3><div class="lv-body"></div></section>
+      <section class="lv-step" id="lv-2"><div class="lv-num">2</div><h3 id="lv-2h">The room opens it</h3><div class="lv-body"></div></section>
+      <section class="lv-step" id="lv-3"><div class="lv-num">3</div><h3 id="lv-3h">Recall it</h3><div class="lv-body"></div></section>
+    </div>
+    <div class="card"><div class="next"><h3 style="margin:0">Live activity <span class="muted" style="font-weight:400">· ground truth from the demo systems</span></h3>
+      <button class="btn" id="lv-reset">Reset demo</button></div>
+      <ol class="lv-log" id="lv-log"><li class="muted">Nothing yet.</li></ol></div>`;
+  $("#lv-present").onclick = openPresent;
+  $("#lv-reset").onclick = async () => { await api("/api/live/reset", {}); live.seen = 0; live.path = null; live.key = null; pollLive(); };
+  pollLive();
+}
+
+async function pollLive() {
+  if (!live) return;
+  clearTimeout(live.timer);
+  let s;
+  try { s = await api("/api/live"); } catch (e) { live.timer = setTimeout(pollLive, 2000); return; }
+  if (!live) return;
+  live.last = s;
+  renderLive(s);
+  renderPresent(s);
+  live.timer = setTimeout(pollLive, 1200);
+}
+
+function openPresent() {
+  let el = $("#present");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "present";
+    el.className = "present";
+    document.body.appendChild(el);
+    el.addEventListener("click", async e => {
+      if (e.target.closest("[data-exit]")) return closePresent();
+      if (e.target.closest("[data-present-recall]")) {
+        e.target.disabled = true;
+        await api("/api/live/recall", {}); await refresh(); renderList(); pollLive();
+      }
+    });
+  }
+  el.hidden = false;
+  el.dataset.key = "";
+  if (live && live.last) renderPresent(live.last);
+  el.requestFullscreen?.().catch(() => {});
+}
+function closePresent() {
+  const el = $("#present");
+  if (el) el.hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") closePresent(); });
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && $("#present") && !$("#present").hidden) closePresent(); });
+
+function renderPresent(s) {
+  const el = $("#present");
+  if (!el || el.hidden) return;
+  const M = MODE[s.mode || "link"];
+  const round = s.outage ? "Round C · Access log outage" : s.mode === "key" ? "Round B · Leaked API key" : "Round A · Patient record link";
+  const key = `${s.status}|${s.path}|${s.verdict}`;
+  if (el.dataset.key !== key) {
+    el.dataset.key = key;
+    const exit = `<button class="btn pr-exit" data-exit="1">Exit (Esc)</button>`;
+    if (s.status === "idle") {
+      el.innerHTML = `${exit}<div class="pr-idle"><h1>Pick a round on the laptop first</h1><p class="muted">The QR code appears here as soon as the agent sends it.</p></div>`;
+      return;
+    }
+    const counts = s.counters.map((c, i) => `<div><b id="pr-c${i}">${c.value}</b><span>${esc(c.label)}</span></div>`).join("");
+    const right = s.status === "sent"
+      ? `${s.outage ? `<div class="lv-outage">Access log down for this round: expect ESCALATED</div>` : ""}
+         <div class="pr-counts">${counts}</div>
+         <button class="btn danger pr-recall" data-present-recall="1">${M.recall}</button>`
+      : `<div class="pr-verdict ${s.verdict}">${s.verdict}</div><p class="pr-meaning">${esc(MEANING[s.verdict])}</p>
+         <div class="pr-counts">${counts}</div>`;
+    el.innerHTML = `${exit}<div class="pr-wrap">
+      <div class="pr-left"><img class="pr-qr ${s.target_active ? "" : "dead"}" src="/api/live/qr.svg?p=${encodeURIComponent(s.path)}" alt="QR code">
+        <div class="pr-url mono">${esc(s.url)}</div></div>
+      <div class="pr-right"><div class="lv-round ${s.outage ? "outage" : ""}">${round}</div>
+        <h1>${s.status === "sent" ? (s.mode === "key" ? "Scan to read the leaked email" : "Scan to open what the agent sent") : (s.mode === "key" ? "Key rotated" : "Link revoked")}</h1>
+        ${right}</div></div>`;
+    return;
+  }
+  s.counters.forEach((c, i) => { const n = $("#pr-c" + i); if (n) n.textContent = c.value; });
+  $(".pr-qr", el)?.classList.toggle("dead", !s.target_active);
+}
+
+function renderLive(s) {
+  $("#live-warn").innerHTML = s.reachable ? "" : `<div class="note">Phones can't reach this laptop yet. Stop the server and start it with
+    <code>python3 app.py --live</code> (phones on the same Wi-Fi), or set <code>RECALL_PUBLIC_URL</code> to a tunnel address. You can still test by opening the link on this machine.</div>`;
+  const [s1, s2, s3] = ["#lv-1", "#lv-2", "#lv-3"].map(id => $(id));
+  const key = `${s.status}|${s.path}|${s.verdict}|${s.reachable}|${s.mode}`;
+  if (live.key === key) { updateLiveCounts(s); renderLiveLog(s); return; }
+  live.key = key;
+  $(".lv-steps").classList.toggle("idle", s.status === "idle");
+  [s1, s2, s3].forEach((el, i) => el.classList.toggle("on", (s.status === "idle" && i === 0) || (s.status === "sent" && i > 0) || (s.status === "recalled" && i === 2)));
+  const M = MODE[s.mode || "link"];
+  $("#lv-2h").textContent = M.scan;
+  $("#lv-3h").textContent = M.recall;
+
+  if (s.status === "idle") {
+    const badges = vs => vs.map(v => `<span class="badge ${v}">${v}</span>`).join(" ");
+    $(".lv-body", s1).innerHTML = `<p class="muted">Pick a round. The badges show how each one can end.</p>
+      <button class="lv-pick" data-mode="link"><span class="lv-badges">${badges(["CONTAINED", "EXPOSED"])}</span>
+        <b>Round A · Patient record link</b><span>${MODE.link.ends}</span></button>
+      <button class="lv-pick" data-mode="key"><span class="lv-badges">${badges(["REVERSED", "EXPOSED"])}</span>
+        <b>Round B · Leaked API key</b><span>${MODE.key.ends}</span></button>
+      <button class="lv-pick outage" data-mode="link" data-outage="1"><span class="lv-badges">${badges(["ESCALATED"])}</span>
+        <b>Round C · Access log outage</b><span>Same link as round A, but the access log is down. Recall still revokes the link, can't prove who opened it, and refuses to guess. Always ESCALATED.</span></button>`;
+    s1.querySelectorAll("[data-mode]").forEach(b => b.onclick = async () => {
+      s1.querySelectorAll("[data-mode]").forEach(x => x.disabled = true);
+      await api("/api/live/send", {mode: b.dataset.mode, outage: b.dataset.outage === "1"}); pollLive();
+    });
+  } else {
+    const round = s.outage ? "Round C · Access log outage" : s.mode === "key" ? "Round B · Leaked API key" : "Round A · Patient record link";
+    $(".lv-body", s1).innerHTML = `<div class="lv-round ${s.outage ? "outage" : ""}">${round}</div>
+      <p class="muted" style="margin-top:0">${M.who}</p>
+      <div class="lv-mail bad"><div class="lv-tag">${M.wrote}</div>${s.mode === "link" ? `<s>${esc(s.original)}</s>` : esc(s.original)}</div>
+      <div class="lv-mail ${s.mode === "link" ? "good" : "bad"}"><div class="lv-tag">${M.left}</div>${esc(s.left)}</div>`;
+  }
+
+  if (s.status === "idle") $(".lv-body", s2).innerHTML = `<p class="muted">A QR code appears here once the agent has sent it.</p>`;
+  else if (live.path !== s.path) {
+    live.path = s.path;
+    $(".lv-body", s2).innerHTML = `<img class="lv-qr" src="/api/live/qr.svg?p=${encodeURIComponent(s.path)}" alt="QR code for the page the room opens">
+      <a class="lv-url mono" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>
+      <div class="lv-counts">${s.counters.map((c, i) => `<div><b id="lv-c${i}">${c.value}</b><span>${esc(c.label)}</span></div>`).join("")}</div>`;
+  }
+
+  const verdictCard = () => `<div class="verdict ${s.verdict}" style="padding:12px 14px"><div class="v" style="font-size:18px">${s.verdict}</div><p>${esc(MEANING[s.verdict])}</p></div>
+    <p style="margin:10px 0 4px">${s.mode === "key" ? "Key rotated" : "Link revoked"} at <b>${esc(shortTime(s.closed_at))}</b> UTC.
+      ${s.mode === "key" ? "Uses that worked" : "Opens before"}: <b>${s.opened}</b>. Blocked since: <b id="lv-after">${s.blocked}</b>.</p>
+    ${s.outage ? `<p class="muted" style="margin:4px 0">This was round C: the access log was offline on purpose, so Recall could not prove who got in. Reset and pick round A or B for the other verdicts.</p>` : ""}
+    <p class="muted" style="margin:4px 0 10px;font-size:12.5px">${esc(s.reasons[0])}</p>
+    <button class="btn primary" data-go="${s.incident_id}">Open incident and replay</button>`;
+  $(".lv-body", s3).innerHTML = s.status === "idle" ? `<p class="muted">Available once the agent has sent it.</p>`
+    : s.status === "sent" ? `${s.outage ? `<div class="lv-outage">Access log down for this round: expect ESCALATED</div>` : ""}
+        <p class="muted" style="margin-top:0">${M.hint}</p>
+        <button class="btn danger" id="lv-recall" style="margin-top:4px">${M.recall}</button>`
+    : verdictCard();
+  if (s.status === "sent") $("#lv-recall").onclick = async e => { e.target.disabled = true; await api("/api/live/recall", {}); await refresh(); renderList(); pollLive(); };
+  updateLiveCounts(s);
+  renderLiveLog(s);
+}
+
+function updateLiveCounts(s) {
+  if (s.status === "idle" || !$("#lv-c0")) return;
+  s.counters.forEach((c, i) => { $("#lv-c" + i).textContent = c.value; });
+  $(".lv-qr").classList.toggle("dead", !s.target_active);
+  if ($("#lv-after")) $("#lv-after").textContent = s.blocked;
+}
+
+function renderLiveLog(s) {
+  const events = (s.events || []).slice().reverse();
+  if (events.length === live.seen) return;
+  const fresh = events.length - live.seen;
+  live.seen = events.length;
+  $("#lv-log").innerHTML = events.length ? events.map((e, i) =>
+    `<li class="lv-${e.kind} ${i < fresh ? "new" : ""}"><time>${esc(e.at.slice(11, 19))}</time><span>${esc(e.text)}</span></li>`).join("")
+    : `<li class="muted">Nothing yet.</li>`;
+}
+
+/* ---------- replay ---------- */
+const ICON = {
+  agent: '<rect x="4" y="7" width="16" height="12" rx="3"/><circle cx="9.5" cy="13" r="1.3"/><circle cx="14.5" cy="13" r="1.3"/><path d="M12 3v4"/>',
+  gateway: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  share: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2"/>',
+  mail: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  inbox: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  order: '<path d="M3 4h2l3 11h10l2-8H7"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
+  outbound: '<rect x="4" y="9" width="16" height="10" rx="2"/><path d="M7 9V4h10v5M8 14h8"/>',
+  outside: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let rp = null;
+
+function stopReplay() { if (rp && rp.timer) clearTimeout(rp.timer); rp = null; }
+
+function panelHtml(key, p) {
+  const node = (k, icon, name, st) => `<div class="node" data-node="${k}"><div class="ic">${svg(icon)}</div><b>${esc(name)}</b><small class="st">${esc(st)}</small></div>`;
+  return `<section class="rp-panel" data-panel="${key}">
+    <header><span>${p.title}</span><span class="rp-verdict"></span></header>
+    <div class="rp-stage"><div class="rp-line"></div>
+      ${node("agent", "agent", "AI agent", p.agent.replace(/^agent:/, ""))}
+      ${node("gateway", "gateway", p.gateway, "")}
+      ${node("target", p.kind, p.target, "")}
+      ${node("outside", "outside", "Outside world", "")}
+    </div>
+    <ol class="rp-feed"><li class="ph"><span class="ph">Waiting to start…</span></li></ol>
+    <div class="rp-stamp"></div>
+  </section>`;
+}
+
+async function startReplay(inc) {
+  stopReplay();
+  const data = await api("/api/replay/" + inc.incident_id);
+  if (route.id !== inc.incident_id || route.tab !== "replay") return;
+  rp = {data, step: 0, timer: null, playing: false, counts: {}};
+  $("#tabbody").innerHTML = `<div class="rp-bar">
+      <button class="btn primary" id="rp-play">Play</button>
+      <button class="btn" id="rp-restart">Restart</button>
+      <div class="rp-clock"><span>Simulated time</span><b id="rp-clock">–</b></div>
+      <div class="rp-track" id="rp-track" title="Jump to a point in the replay"><div class="rp-fill" id="rp-fill"></div></div>
+    </div>
+    <div class="rp-panels">${panelHtml("without", data.panels.without)}${panelHtml("with", data.panels.with)}</div>
+    <div class="card rp-compare" id="rp-compare"><table>
+      <tr><th></th><th>Without Recall</th><th>With Recall</th></tr>
+      ${data.compare.map(c => `<tr><td>${esc(c.label)}</td><td class="wo">${esc(c.without)}</td><td class="w">${esc(c.with)}</td></tr>`).join("")}
+    </table></div>`;
+  $("#rp-play").onclick = () => rp.playing ? pause() : (rp.step >= rp.data.steps.length ? restart(true) : play());
+  $("#rp-restart").onclick = () => restart(true);
+  $("#rp-track").onclick = e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    jump(Math.round((e.clientX - r.left) / r.width * rp.data.steps.length));
+  };
+  resetPanels();
+  play();
+}
+
+function resetPanels() {
+  rp.counts = {with: {}, without: {}};
+  for (const key of ["with", "without"]) {
+    const P = $(`[data-panel="${key}"]`);
+    P.outerHTML = panelHtml(key, rp.data.panels[key]);
+  }
+  $("#rp-compare").classList.remove("show");
+  $("#rp-clock").textContent = "–";
+  $("#rp-fill").style.width = "0";
+}
+
+function play() {
+  rp.playing = true;
+  $("#rp-play").textContent = "Pause";
+  tick();
+}
+function pause() {
+  rp.playing = false;
+  clearTimeout(rp.timer);
+  $("#rp-play").textContent = rp.step >= rp.data.steps.length ? "Replay" : "Play";
+}
+function restart(autoplay) {
+  clearTimeout(rp.timer);
+  rp.step = 0;
+  resetPanels();
+  if (autoplay) play(); else pause();
+}
+function jump(k) {
+  const wasPlaying = rp.playing;
+  clearTimeout(rp.timer);
+  rp.step = 0;
+  resetPanels();
+  k = Math.max(0, Math.min(k, rp.data.steps.length));
+  while (rp.step < k) runStep(rp.data.steps[rp.step++], false);
+  if (wasPlaying && rp.step < rp.data.steps.length) play(); else pause();
+}
+function tick() {
+  if (!rp || !rp.playing) return;
+  if (rp.step >= rp.data.steps.length) return pause();
+  const s = rp.data.steps[rp.step++];
+  runStep(s, !reduceMotion);
+  const pace = s.final ? 0 : (s.with && s.without ? 1700 : 1350);
+  rp.timer = setTimeout(tick, pace);
+}
+
+function clockText(s) {
+  const t0 = rp.data.steps[0].ts;
+  const mins = Math.round((s.ts - t0) / 60);
+  const el = mins < 60 ? `+${mins} min` : `+${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, "0")} min`;
+  return `${s.at.slice(11, 16)} UTC · ${el}`;
+}
+
+function runStep(s, anim) {
+  $("#rp-clock").textContent = clockText(s);
+  $("#rp-fill").style.width = `${(rp.step / rp.data.steps.length) * 100}%`;
+  if (s.without) apply(s.without, s.at, anim);
+  if (s.with) apply(s.with, s.at, anim);
+  if (s.final) $("#rp-compare").classList.add("show");
+}
+
+function fly(P, from, to, label, cls, bounce) {
+  const stage = $(".rp-stage", P), sr = stage.getBoundingClientRect();
+  const center = k => { const r = $(`[data-node="${k}"] .ic`, P).getBoundingClientRect(); return r.left - sr.left + r.width / 2; };
+  const chip = document.createElement("span");
+  chip.className = "chip " + (cls || "");
+  chip.textContent = label;
+  stage.appendChild(chip);
+  const w = chip.offsetWidth, a = center(from) - w / 2, b = center(to) - w / 2;
+  const frames = bounce
+    ? [{transform: `translateX(${a}px)`, opacity: 0}, {transform: `translateX(${a}px)`, opacity: 1, offset: .1},
+       {transform: `translateX(${b + (a - b) * .35}px)`, opacity: 1, offset: .55}, {transform: `translateX(${a}px)`, opacity: 0}]
+    : [{transform: `translateX(${a}px)`, opacity: 0}, {transform: `translateX(${a}px)`, opacity: 1, offset: .12},
+       {transform: `translateX(${b}px)`, opacity: 1, offset: .82}, {transform: `translateX(${b}px)`, opacity: 0}];
+  chip.animate(frames, {duration: bounce ? 1100 : 1150, easing: "ease-in-out"}).onfinish = () => chip.remove();
+}
+
+function outsideStatus(c) {
+  return [c.in ? `${c.in} got in` : "", c.denied ? `${c.denied} blocked` : ""].filter(Boolean).join(" · ");
+}
+
+function apply(b, at, anim) {
+  const P = $(`[data-panel="${b.panel}"]`);
+  const node = k => $(`[data-node="${k}"]`, P);
+  const status = (k, t) => { $(".st", node(k)).textContent = t; };
+  const mark = (k, ...cls) => { node(k).classList.remove("live", "hit", "dead", "held", "guard"); node(k).classList.add(...cls); };
+  const pulse = k => { node(k).classList.remove("pulse"); void node(k).offsetWidth; node(k).classList.add("pulse"); };
+  const count = (key) => (rp.counts[b.panel][key] = (rp.counts[b.panel][key] || 0) + (b.count || 1));
+  const who = () => short(b.actor) + (b.count > 1 ? ` +${b.count - 1}` : "");
+  const short = a => (a || "").replace(/^ip:/, "").split("@")[0];
+
+  if (b.type !== "final") {
+    const feed = $(".rp-feed", P);
+    $(".ph", feed)?.closest("li")?.remove();
+    feed.insertAdjacentHTML("beforeend", `<li class="t-${b.tone}"><time>${at.slice(11, 16)}</time><span>${esc(b.text)}</span></li>`);
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  switch (b.type) {
+    case "send":
+      if (anim) fly(P, "agent", b.to, b.label, b.raw ? "raw" : "");
+      pulse("agent");
+      if (b.to === "target") { mark("target", b.raw ? "hit" : "live"); status("target", b.raw ? "raw copy delivered" : "live"); }
+      break;
+    case "gateway":
+      if (b.mode === "absent" || b.mode === "bypassed") { node("gateway").classList.add("off"); status("gateway", b.mode === "bypassed" ? "bypassed" : "nothing checks it"); break; }
+      if (b.mode === "hold") { mark("gateway", "held"); status("gateway", "holding for approval"); break; }
+      mark("gateway", "guard"); pulse("gateway");
+      if (anim) fly(P, "gateway", "target", b.mode === "rewrite" ? "expiring link" : b.mode === "release" ? "fax" : "logged", b.mode === "rewrite" ? "safe" : "");
+      status("gateway", b.mode === "rewrite" ? "payload → link" : b.mode === "release" ? "approved" : "logged");
+      mark("target", "live"); status("target", b.mode === "rewrite" ? "link live" : b.mode === "release" ? "sending" : "live");
+      break;
+    case "deliver":
+      if (anim) fly(P, "target", "outside", "fax", "raw");
+      mark("outside", "hit"); status("outside", "has the fax");
+      break;
+    case "access":
+      if (b.who === "system") {
+        if (b.result === "allowed") { mark("target", "hit"); status("target", "fulfilled"); if (anim) fly(P, "target", "outside", "money", "raw"); }
+        else { status("target", "fulfilment blocked"); pulse("target"); }
+      } else if (b.who === "inside") {
+        if (anim) fly(P, "outside", "target", who(), "quiet");
+      } else if (b.result === "denied") {
+        if (anim) fly(P, "outside", "target", "✕ " + who(), "denied", true);
+        count("denied"); status("outside", outsideStatus(rp.counts[b.panel])); pulse("target");
+      } else if (b.result === "untracked") {
+        if (anim) fly(P, "outside", "target", "? " + who(), "unk");
+        status("outside", "can't tell who read it"); mark("outside", "hit");
+      } else {
+        if (anim) fly(P, "outside", "target", who(), "bad");
+        mark("target", "hit"); status("target", "accessed");
+        count("in"); mark("outside", "hit"); status("outside", outsideStatus(rp.counts[b.panel]));
+      }
+      break;
+    case "incident":
+      P.classList.remove("alarm"); void P.offsetWidth; P.classList.add("alarm");
+      break;
+    case "reversal":
+      if (b.ok) {
+        if (node("gateway").classList.contains("held")) status("gateway", "hold cancelled");
+        mark("target", "dead"); status("target", b.status); mark("gateway", "guard"); pulse("target");
+      }
+      else { mark("target", "hit"); status("target", "revoke failed"); }
+      break;
+    case "verdict":
+      $(".rp-verdict", P).innerHTML = `<span class="badge ${b.verdict}">${b.verdict}</span>`;
+      break;
+    case "final": {
+      const st = $(".rp-stamp", P);
+      st.innerHTML = `<span class="h ${b.class}">${esc(b.headline)}</span><p>${esc(b.text)}</p>`;
+      st.classList.remove("show"); void st.offsetWidth; st.classList.add("show");
+      break;
+    }
+  }
+}
+
+async function refresh() {
+  incidents = await api("/api/incidents");
+  $("#clear-inc").hidden = !incidents.length;
+  watchDrafts();
+}
+
+let draftWatch = null;
+function watchDrafts() {
+  clearTimeout(draftWatch);
+  if (!incidents.some(i => i.drafts_pending)) return;
+  draftWatch = setTimeout(async () => {
+    const before = incidents.filter(i => i.drafts_pending).map(i => i.incident_id);
+    await refresh();
+    renderList();
+    const done = before.filter(id => !incidents.find(i => i.incident_id === id)?.drafts_pending);
+    if (done.includes(route.id) && ["drafts", "overview"].includes(route.tab)) renderView();
+  }, 1500);
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-go],[data-tab],[data-draft],[data-run],[data-act],[data-live]");
+  if (t && t.dataset.live) { location.hash = "#/live"; return; }
+  if (!t) return;
+  if (t.dataset.go) return go(t.dataset.go, route.id === t.dataset.go ? route.tab : "replay");
+  if (t.dataset.tab) return go(route.id, t.dataset.tab);
+  if (t.dataset.draft) return go(route.id, "drafts", t.dataset.draft);
+  if (t.dataset.run) return run(t.dataset.run, t);
+  if (t.dataset.act) {
+    const box = t.closest("[data-kind]");
+    const who = $(".who", box).value.trim();
+    approver = who; try { localStorage.setItem("recall-approver", who); } catch (err) {}
+    const body = {incident_id: route.id, kind: box.dataset.kind, approver: who};
+    if (t.dataset.act === "approve") body.text = $("textarea", box).value;
+    try { await api("/api/" + t.dataset.act, body); await refresh(); renderView(); }
+    catch (err) { $(".msg", box).textContent = err.message; }
+  }
+});
+$("#new").onclick = () => { renderPicker(); $("#picker").showModal(); };
+$("#clear-inc").onclick = async () => {
+  if (!confirm("Clear all incidents from this demo? They only live in memory, so this cannot be undone.")) return;
+  await api("/api/incidents/clear", {});
+  await refresh();
+  if (route.id && route.id !== "live") go(null); else renderView();
+};
+$("#close").onclick = () => $("#picker").close();
+window.addEventListener("hashchange", () => { parseHash(); renderView(); });
+
+(async () => {
+  scenarios = await api("/api/scenarios");
+  await refresh();
+  parseHash();
+  if (!route.id && incidents.length) return go(incidents[0].incident_id);
+  renderView();
+})();
+</script>
+</body>
+</html>

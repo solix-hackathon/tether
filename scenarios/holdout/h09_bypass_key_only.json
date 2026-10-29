@@ -1,0 +1,36 @@
+{
+  "id": "h09_bypass_key_only",
+  "title": "Key emailed around the gateway, rotated in time",
+  "start": "2026-04-09T09:00:00Z",
+  "setup": {
+    "keys": [
+      {
+        "id": "key-labs-api",
+        "secret": "rcl_live_Qe5Rt8Yu2Io4Pa7Sd1Fg6Hj9",
+        "service": "svc:lab-sync"
+      }
+    ]
+  },
+  "action": {
+    "tool": "send_email",
+    "via_gateway": false,
+    "args": {
+      "to": [
+        "ops@partner.example"
+      ],
+      "body": "use rcl_live_Qe5Rt8Yu2Io4Pa7Sd1Fg6Hj9"
+    }
+  },
+  "events": [
+    {
+      "at": "+01:00:00",
+      "type": "key_use",
+      "actor": "ip:192.0.2.50"
+    }
+  ],
+  "incident": {
+    "at": "+00:06:00",
+    "source": "detector"
+  },
+  "expected": "REVERSED"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "s07_internal_mail_read",
+  "title": "Internal mis-send, already read",
+  "start": "2026-03-07T13:00:00Z",
+  "action": {
+    "tool": "send_email",
+    "args": {
+      "to": [
+        "j.carter@stmarys-health.example"
+      ],
+      "subject": "HIV test result",
+      "body": "Please find the discharge summary attached.",
+      "records": [
+        "P-1021"
+      ]
+    }
+  },
+  "events": [
+    {
+      "at": "+00:05:00",
+      "type": "mail_read",
+      "actor": "j.carter@stmarys-health.example"
+    }
+  ],
+  "incident": {
+    "at": "+00:20:00"
+  },
+  "expected": "EXPOSED"
+}
